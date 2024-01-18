@@ -58,7 +58,7 @@ namespace GameFramework.GameData
                 m_DataDescFile.stringValue = RelativeFilePathFieldLayout("数据描述文件(XML)", m_DataDescFile.stringValue,"xml");
                 m_TableTemplateDirectory.stringValue = RelativeFolderPathFieldLayout("表格模板文件夹", m_TableTemplateDirectory.stringValue);
                 m_TableDirectory.stringValue = RelativeFolderPathFieldLayout("表格文件夹(csv)", m_TableDirectory.stringValue);
-                m_GeneratedCodeDirectory.stringValue = RelativeFolderPathFieldLayout("代码生成文件", m_GeneratedCodeDirectory.stringValue);
+                m_GeneratedCodeDirectory.stringValue = RelativeFolderPathFieldLayout("代码生成文件夹", m_GeneratedCodeDirectory.stringValue);
 
                 if (EditorGUI.EndChangeCheck())
                 {
