@@ -19,7 +19,7 @@ namespace GameFramework.GameData
         [SettingsProvider]
         public static SettingsProvider CreateTimelineProjectSettingProvider()
         {
-            var provider = new GameDataSettingsProvider("Project/GameData", SettingsScope.Project);
+            var provider = new GameDataSettingsProvider("Project/GameData Editor Settings", SettingsScope.Project);
             return provider;
         }
 

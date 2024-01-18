@@ -24,7 +24,7 @@ namespace GameFramework.GameData
         /// </summary>
         public static string TableDirectory { get { return instance.m_TableDirectory; } }
         /// <summary>
-        /// 代码生成文件
+        /// 代码生成文件夹
         /// </summary>
         public static string GeneratedCodeDirectory { get { return instance.m_GeneratedCodeDirectory; } }
 
