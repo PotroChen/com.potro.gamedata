@@ -34,8 +34,8 @@ namespace GameFramework.GameData
 
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
-            GameDataSettings.instance.Save();
-            m_SerializedObject = GameDataSettings.instance.GetSerializedObject();
+            GameDataEditorSettings.instance.Save();
+            m_SerializedObject = GameDataEditorSettings.instance.GetSerializedObject();
             m_DataDescFile = m_SerializedObject.FindProperty("m_DataDescFile");
             m_TableTemplateDirectory = m_SerializedObject.FindProperty("m_TableTemplateDirectory");
             m_TableDirectory = m_SerializedObject.FindProperty("m_TableDirectory");
@@ -63,7 +63,7 @@ namespace GameFramework.GameData
                 if (EditorGUI.EndChangeCheck())
                 {
                     m_SerializedObject.ApplyModifiedProperties();
-                    GameDataSettings.instance.Save();
+                    GameDataEditorSettings.instance.Save();
                 }
             }
             finally

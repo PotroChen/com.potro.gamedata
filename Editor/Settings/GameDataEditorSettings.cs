@@ -8,8 +8,8 @@ using System.Reflection;
 
 namespace GameFramework.GameData
 {
-    [FilePath("ProjectSettings/GameDataSetting.asset", FilePathAttribute.Location.ProjectFolder)]
-    public class GameDataSettings : ScriptableSingleton<GameDataSettings>
+    [FilePath("ProjectSettings/GameDataEditorSetting.asset", FilePathAttribute.Location.ProjectFolder)]
+    public class GameDataEditorSettings : ScriptableSingleton<GameDataEditorSettings>
     {
         /// <summary>
         /// 数据表述文件
