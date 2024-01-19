@@ -28,6 +28,11 @@ namespace GameFramework.GameData
         /// </summary>
         public static string GeneratedCodeDirectory { get { return instance.m_GeneratedCodeDirectory; } }
 
+        /// <summary>
+        /// 生成代码默认命名空间
+        /// </summary>
+        public static string DefaultNameSpace { get { return instance.m_DefaultNameSpace; } }
+
         [SerializeField]
         private string m_DataDescFile = "";
         [SerializeField]
@@ -36,6 +41,8 @@ namespace GameFramework.GameData
         private string m_TableDirectory = "";
         [SerializeField]
         private string m_GeneratedCodeDirectory = "";
+        [SerializeField]
+        private string m_DefaultNameSpace = "";
 
 
         void OnDisable()

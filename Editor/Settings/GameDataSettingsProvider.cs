@@ -28,7 +28,7 @@ namespace GameFramework.GameData
         SerializedProperty m_TableTemplateDirectory;
         SerializedProperty m_TableDirectory;
         SerializedProperty m_GeneratedCodeDirectory;
-
+        SerializedProperty m_DefaultNameSpace;
         public GameDataSettingsProvider(string path, SettingsScope scopes, IEnumerable<string> keywords = null)
                 : base(path, scopes, keywords) { }
 
@@ -40,6 +40,7 @@ namespace GameFramework.GameData
             m_TableTemplateDirectory = m_SerializedObject.FindProperty("m_TableTemplateDirectory");
             m_TableDirectory = m_SerializedObject.FindProperty("m_TableDirectory");
             m_GeneratedCodeDirectory = m_SerializedObject.FindProperty("m_GeneratedCodeDirectory");
+            m_DefaultNameSpace = m_SerializedObject.FindProperty("m_DefaultNameSpace");
         }
 
         /* ScriptableSingleton故意设置成DontSaveAndHide
@@ -59,7 +60,7 @@ namespace GameFramework.GameData
                 m_TableTemplateDirectory.stringValue = RelativeFolderPathFieldLayout("表格模板文件夹", m_TableTemplateDirectory.stringValue);
                 m_TableDirectory.stringValue = RelativeFolderPathFieldLayout("表格文件夹(csv)", m_TableDirectory.stringValue);
                 m_GeneratedCodeDirectory.stringValue = RelativeFolderPathFieldLayout("代码生成文件夹", m_GeneratedCodeDirectory.stringValue);
-
+                m_DefaultNameSpace.stringValue = EditorGUILayout.TextField("生成代码默认命名空间", m_DefaultNameSpace.stringValue);
                 if (EditorGUI.EndChangeCheck())
                 {
                     m_SerializedObject.ApplyModifiedProperties();
