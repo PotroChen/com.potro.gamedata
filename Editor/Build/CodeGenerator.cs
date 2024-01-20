@@ -7,13 +7,38 @@ using System.Text;
 using System;
 using UnityEditor;
 using UnityEditorInternal;
+using System.Linq;
 
 namespace GameFramework.GameData
 {
     internal class CodeGenerator
     {
+        [UnityEditor.MenuItem("Test/Test")]
+        public static void GenerateDataClass()
+        {
+            string descPath = Path.Combine(UnityEngine.Application.dataPath, GameDataEditorSettings.DataDescFile);
+            var descFile = GameDataSerialization.Deserialize(descPath);
+
+            CodeGenerator codeGenerator = new CodeGenerator(descPath);
+            foreach (var data in descFile.DataDescList)
+            {
+                string rootDirectory = Path.Combine(UnityEngine.Application.dataPath, GameDataEditorSettings.GeneratedCodeDirectory);
+                codeGenerator.GenerateDataCodeFile(data, rootDirectory);
+            }
+
+            foreach (var table in descFile.TableDescList)
+            {
+                string rootDirectory = Path.Combine(UnityEngine.Application.dataPath, GameDataEditorSettings.GeneratedCodeDirectory);
+                codeGenerator.GenerateTableCodeFile(table, rootDirectory);
+            }
+            AssetDatabase.Refresh();
+        }
+
+
         private Dictionary<string,CodeTypeReference> typeMapping = new Dictionary<string,CodeTypeReference>();
-        public CodeGenerator() 
+        private Dictionary<string,DataDescription> nameToDataDesc = new Dictionary<string,DataDescription>();
+
+        public CodeGenerator(string descFilePath) 
         {
             CodeTypeReference stringType = new CodeTypeReference(typeof(string));
             typeMapping["string"] = stringType;
@@ -23,23 +48,114 @@ namespace GameFramework.GameData
 
             CodeTypeReference uIntType = new CodeTypeReference(typeof(uint));
             typeMapping["uint32"] = uIntType;
-        }
 
-        [UnityEditor.MenuItem("Test/Test")]
-        public static void GenerateDataClass()
-        {
-            string descPath = Path.Combine(UnityEngine.Application.dataPath,GameDataEditorSettings.DataDescFile);
-            var descFile = GameDataSerialization.Deserialize(descPath);
-
-            CodeGenerator codeGenerator = new CodeGenerator();
+            var descFile = GameDataSerialization.Deserialize(descFilePath);
             foreach (var data in descFile.DataDescList)
             {
-                string rootDirectory = Path.Combine(UnityEngine.Application.dataPath, GameDataEditorSettings.GeneratedCodeDirectory);
-                codeGenerator.GenerateDataCodeFile(data, rootDirectory);
+                if (!nameToDataDesc.ContainsKey(data.Name))
+                {
+                    nameToDataDesc[data.Name] = data;
+                }
+                else
+                    throw new Exception($"Exist different data with same name:{data.Name}");
             }
-            AssetDatabase.Refresh();
         }
 
+        #region GenerateTableCodeFile
+
+        internal void GenerateTableCodeFile(TableDescription tableDescription, string rootDirectory)
+        {
+            string directoryPath = Path.Combine(rootDirectory, tableDescription.CodeDirectory);
+            string filePath = Path.Combine(directoryPath, $"{tableDescription.Name}.cs");
+
+            CodeNamespace ns = new CodeNamespace(GameDataEditorSettings.DefaultNameSpace);
+            HashSet<string> usingNamespaces = null;
+            CodeTypeDeclaration table = TableDescToCodeTypeDeclaration(tableDescription,ref usingNamespaces);
+            ns.Types.Add(table);
+
+            CodeCompileUnit compileUnit = new CodeCompileUnit();
+            //设置所属Namespace
+            compileUnit.Namespaces.Add(ns);
+            //添加Using Namespace
+            CodeDomUtils.AddUsingNameSapce(compileUnit, usingNamespaces);
+            if (!Directory.Exists(directoryPath))
+                Directory.CreateDirectory(directoryPath);
+
+            GenerateCSharpCode(compileUnit, filePath);
+        }
+
+        //Table类
+        internal CodeTypeDeclaration TableDescToCodeTypeDeclaration(TableDescription tableDescription,ref HashSet<string> usingNamespaces)
+        {
+            CodeTypeDeclaration tableClass = new CodeTypeDeclaration(tableDescription.Name);
+            var keyType = GetKeyType(tableDescription);
+            var dataDesc = GetDataDesc(tableDescription);
+            //记录需要添加的Using Namespace
+            if (usingNamespaces == null)
+                usingNamespaces = new HashSet<string>();
+
+            if (!usingNamespaces.Contains("System.Collections.Generic"))
+                usingNamespaces.Add("System.Collections.Generic");
+
+            if(!usingNamespaces.Contains(dataDesc.GetNamespace()))
+                usingNamespaces.Add(dataDesc.GetNamespace());
+            //添加key2Data Dictionary
+            CodeMemberField dataDic = new CodeMemberField();
+            dataDic.Name = "m_DataDic";
+            dataDic.Attributes = MemberAttributes.FamilyAndAssembly;//访问等级为Internals
+            dataDic.Type = new CodeTypeReference("SortedDictionary", new CodeTypeReference[] { keyType, new CodeTypeReference(dataDesc.Name) });
+            tableClass.Members.Add(dataDic);
+            //添加GetData方法
+            CodeMemberMethod getDataMethod = new CodeMemberMethod();
+            getDataMethod.Name = $"Get{dataDesc.Name}";
+            getDataMethod.Attributes = MemberAttributes.Public| MemberAttributes.Final;
+            getDataMethod.ReturnType = new CodeTypeReference(dataDesc.Name);
+            getDataMethod.Parameters.Add(new CodeParameterDeclarationExpression(keyType, tableDescription.Key));
+            string intendedString = "            ";
+            getDataMethod.Statements.Add(new CodeSnippetStatement(
+                $"{intendedString}{dataDesc.Name} rtn;\n" +
+                $"{intendedString}m_DataDic.TryGetValue({tableDescription.Key},out rtn);\n" +
+                $"{intendedString}return rtn;"));
+            tableClass.Members.Add(getDataMethod);
+            //添加GetAllData方法
+            CodeMemberMethod getAllDataMethod = new CodeMemberMethod();
+            getAllDataMethod.Name = $"GetAll{dataDesc.Name}s";
+            getAllDataMethod.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+            getAllDataMethod.ReturnType = dataDic.Type;
+            getAllDataMethod.Statements.Add(new CodeSnippetStatement(
+                $"{intendedString}return m_DataDic;"));
+            tableClass.Members.Add(getAllDataMethod);
+            return tableClass;
+        }
+
+        CodeTypeReference GetKeyType(TableDescription tableDescription)
+        {
+            var dataType = tableDescription.DataType;
+            var dataDesc = GetDataDesc(tableDescription);
+
+            foreach (var variable in dataDesc.Variables)
+            {
+                if (variable.Name == tableDescription.Key)
+                {
+                    return GetCodeType(variable.Type);
+                }
+            }
+            throw new Exception($"Table {tableDescription.Name} can not find key {tableDescription.Key}");
+        }
+
+        DataDescription GetDataDesc(TableDescription tableDescription)
+        {
+            var dataType = tableDescription.DataType;
+            if (nameToDataDesc.TryGetValue(dataType, out var dataDesc))
+            {
+                return dataDesc;
+            }
+            else
+                throw new Exception($"Table {tableDescription.Name} can not find dataType {dataType}");
+        }
+        #endregion
+
+        #region GenerateDataCodeFile
         internal void GenerateDataCodeFile(DataDescription dataDescription,string rootDirectory)
         {
             string directoryPath = Path.Combine(rootDirectory, dataDescription.CodeDirectory);
@@ -52,63 +168,60 @@ namespace GameFramework.GameData
             CodeCompileUnit compileUnit = new CodeCompileUnit();
             compileUnit.Namespaces.Add(ns);
 
-            if(!Directory.Exists(directoryPath))
+            if (!Directory.Exists(directoryPath))
                 Directory.CreateDirectory(directoryPath);
 
             GenerateCSharpCode(compileUnit, filePath);
         }
 
+        //Data类声明
         internal CodeTypeDeclaration DataDescToCodeTypeDeclaration(DataDescription dataDescription)
         {
             CodeTypeDeclaration dataClass = new CodeTypeDeclaration(dataDescription.Name);
-
             if (dataDescription.Variables != null && dataDescription.Variables.Count > 0)
             {
+                //Data字段声明
                 foreach (var variable in dataDescription.Variables)
                 {
-                    if (typeMapping.TryGetValue(variable.Type, out var type))
-                    {
-                        string fieldName = $"m_{variable.Name}";
-                        CodeMemberField field = new CodeMemberField(type, fieldName);
-                        field.Attributes = MemberAttributes.FamilyAndAssembly;
-                        dataClass.Members.Add(field);
+                    var fieldType = GetCodeType(variable.Type);
+                    string fieldName = $"m_{variable.Name}";
+                    CodeMemberField field = new CodeMemberField(fieldType, fieldName);
+                    field.Attributes = MemberAttributes.FamilyAndAssembly;
+                    dataClass.Members.Add(field);
 
-                        CodeMemberProperty property = new CodeMemberProperty();
-                        property.Name = variable.Name;
-                        property.Attributes = MemberAttributes.Public;
-                        property.Type = type;
-                        property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName)));
-                        property.Comments.Add(Comment(variable.Comment));
-                        dataClass.Members.Add(property);
-                    }
-                    else
-                        throw new Exception($"{dataDescription.Name}生成失败,不支持variable type,{variable.Type}");
+                    CodeMemberProperty property = new CodeMemberProperty();
+                    property.Name = variable.Name;
+                    property.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+                    property.Type = fieldType;
+                    property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName)));
+                    property.Comments.Add(Comment(variable.Comment));
+                    dataClass.Members.Add(property);
                 }
             }
+
             return dataClass;
         }
-
+        #endregion
 
 
         public void GenerateCSharpCode(CodeCompileUnit compileunit,string filePath)
         {
-            // Generate the code with the C# code provider.
             CSharpCodeProvider provider = new CSharpCodeProvider();
-
-            // Create a TextWriter to a StreamWriter to the output file.
             using (StreamWriter sw = new StreamWriter(filePath, false, Encoding.UTF8))
             {
+                //会有auto-generated的注释，决定先留下(后续如果想要去掉,去掉TextWriter的前几行)
+                //用4个空格作为Tab
                 IndentedTextWriter tw = new IndentedTextWriter(sw, "    ");
-
-                // Generate source code using the code provider.
+                
+                CodeGeneratorOptions options = new CodeGeneratorOptions();
+                options.BracingStyle = "C";//左花括号换行
                 provider.GenerateCodeFromCompileUnit(compileunit, tw,
-                    new CodeGeneratorOptions());
+                    options);
                 tw.Close();
             }
         }
 
-
-        #region Utils
+        #region Comdom Utils
         /// <summary>
         /// 注释
         /// </summary>
@@ -119,6 +232,20 @@ namespace GameFramework.GameData
             CodeCommentStatement commentStatement = new CodeCommentStatement(comment);
             return commentStatement;
         }
+
+        private CodeTypeReference GetCodeType(string typeName)
+        {
+            if (typeMapping.TryGetValue(typeName, out var type))
+            {
+                return type;
+            }
+            else
+            {
+                throw new Exception($"不支持variable type,{typeName}");
+            }
+        }
+
+
         #endregion
     }
 }
