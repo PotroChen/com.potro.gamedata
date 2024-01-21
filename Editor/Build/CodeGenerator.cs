@@ -13,28 +13,6 @@ namespace GameFramework.GameData
 {
     internal class CodeGenerator
     {
-        [UnityEditor.MenuItem("Test/Test")]
-        public static void GenerateDataClass()
-        {
-            string descPath = Path.Combine(UnityEngine.Application.dataPath, GameDataEditorSettings.DataDescFile);
-            var descFile = GameDataSerialization.Deserialize(descPath);
-
-            CodeGenerator codeGenerator = new CodeGenerator(descPath);
-            foreach (var data in descFile.DataDescList)
-            {
-                string rootDirectory = Path.Combine(UnityEngine.Application.dataPath, GameDataEditorSettings.GeneratedCodeDirectory);
-                codeGenerator.GenerateDataCodeFile(data, rootDirectory);
-            }
-
-            foreach (var table in descFile.TableDescList)
-            {
-                string rootDirectory = Path.Combine(UnityEngine.Application.dataPath, GameDataEditorSettings.GeneratedCodeDirectory);
-                codeGenerator.GenerateTableCodeFile(table, rootDirectory);
-            }
-            AssetDatabase.Refresh();
-        }
-
-
         private Dictionary<string,CodeTypeReference> typeMapping = new Dictionary<string,CodeTypeReference>();
         private Dictionary<string,DataDescription> nameToDataDesc = new Dictionary<string,DataDescription>();
 
@@ -50,14 +28,14 @@ namespace GameFramework.GameData
             typeMapping["uint32"] = uIntType;
 
             var descFile = GameDataSerialization.Deserialize(descFilePath);
-            foreach (var data in descFile.DataDescList)
+            foreach (var dataDesc in descFile.DataDescList)
             {
-                if (!nameToDataDesc.ContainsKey(data.Name))
+                if (!nameToDataDesc.ContainsKey(dataDesc.Name))
                 {
-                    nameToDataDesc[data.Name] = data;
+                    nameToDataDesc[dataDesc.Name] = dataDesc;
                 }
                 else
-                    throw new Exception($"Exist different data with same name:{data.Name}");
+                    throw new Exception($"Exist different data with same name:{dataDesc.Name}");
             }
         }
 
