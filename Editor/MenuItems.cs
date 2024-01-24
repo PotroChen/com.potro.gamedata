@@ -2,6 +2,7 @@ using System.CodeDom.Compiler;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using CsvHelper;
 using UnityEditor;
 using UnityEngine;
 
@@ -54,6 +55,34 @@ namespace GameFramework.GameData
                 tableTemplateGenerator.GenerateTableTemplateFile(table, rootTableTemplateDirectory);
             }
         }
+
+        //[UnityEditor.MenuItem("Test/Test")]
+        //public static void Test()
+        //{
+        //    var GameDataSettings = AssetDatabase.LoadAssetAtPath<GameDataSettings>("Assets/Settings/GameDataSettings.asset");
+        //    string path = Path.Combine(Application.dataPath, GameDataSettings.TableDirectory, "Items/ConsumableItemTable.csv");
+        //    using (StreamReader streamReader = new StreamReader(path))
+        //    {
+        //        using (CsvReader csvReader = new CsvReader(streamReader, GameDataSettings.CSVConfiguration))
+        //        {
+        //            csvReader.Read();
+        //            int row = 0;
+        //            while (csvReader.Read())
+        //            {
+        //                row++;
+        //                if (row == 1)//Reader在第二行
+        //                {
+        //                    csvReader.ReadHeader();
+        //                }
+        //                else
+        //                {
+        //                    csvReader.GetRecords<ConsumableItemCfg>
+        //                }
+        //                Debug.Log($"{csvReader.GetField(0)},{csvReader.GetField(1)},{csvReader.GetField(2)},{csvReader.GetField(3)},{csvReader.GetField(4)}");
+        //            }
+        //        }
+        //    }
+        //}
     }
 
 }

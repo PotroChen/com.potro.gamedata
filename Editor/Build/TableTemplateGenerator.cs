@@ -6,9 +6,6 @@ using System.IO;
 using System.Runtime.Remoting.Messaging;
 using System.Text;
 using CsvHelper;
-using CsvHelper.Configuration;
-using UnityEngine;
-using UnityEngine.Profiling;
 
 namespace GameFramework.GameData
 {
@@ -37,18 +34,15 @@ namespace GameFramework.GameData
             if(!Directory.Exists(directory))
                 Directory.CreateDirectory(directory);
 
-            //if (!File.Exists(filePath))
-            //    File.Create(filePath);
-
             var dataDesc = GetDataDesc(tableDescription);
-
-
-            //TODO 改成一个静态的配置公用的实例
-            CsvConfiguration csvConfiguration = new CsvConfiguration(CultureInfo.InvariantCulture);
-            using (var writer = new StreamWriter(filePath,false, Encoding.UTF8))
+            using (var writer = new StreamWriter(filePath,false, GameDataSettings.CSVConfiguration.Encoding))
             {
-                using (var csv = new CsvWriter(writer, csvConfiguration))
+                using (var csv = new CsvWriter(writer, GameDataSettings.CSVConfiguration))
                 {
+                    //但是加上"sep="后会导致Excel不以正确的编码格式打开csv,导致乱码
+                    ////告知其他软件分隔符是什么（特指Excel的某些版本）
+                    //csv.WriteField($"sep={GameDataSettings.CSVConfiguration.Delimiter}", true);
+                    //csv.NextRecord();
                     //Write 字段描述
                     foreach (var variable in dataDesc.Variables)
                     {

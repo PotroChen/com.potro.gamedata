@@ -20,10 +20,6 @@ namespace GameFramework.GameData
         /// </summary>
         public static string TableTemplateDirectory { get { return instance.m_TableTemplateDirectory; } }
         /// <summary>
-        /// 表格文件夹(csv)
-        /// </summary>
-        public static string TableDirectory { get { return instance.m_TableDirectory; } }
-        /// <summary>
         /// 代码生成文件夹
         /// </summary>
         public static string GeneratedCodeDirectory { get { return instance.m_GeneratedCodeDirectory; } }
@@ -32,6 +28,11 @@ namespace GameFramework.GameData
         /// 生成代码默认命名空间
         /// </summary>
         public static string DefaultNameSpace { get { return instance.m_DefaultNameSpace; } }
+
+        /// <summary>
+        /// GameData Runtime Settings Path
+        /// </summary>
+        public static string RuntimeSettingsPath { get { return instance.m_RuntimeSettingPath; } }
 
         [SerializeField]
         private string m_DataDescFile = "";
@@ -43,6 +44,8 @@ namespace GameFramework.GameData
         private string m_GeneratedCodeDirectory = "";
         [SerializeField]
         private string m_DefaultNameSpace = "";
+        [SerializeField]
+        private string m_RuntimeSettingPath = "";
 
 
         void OnDisable()

@@ -1,7 +1,9 @@
 {
     "name": "com.potro.gamedata.editor",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "GUID:0db3ab5e5894e724ca704ef7e74d827a"
+    ],
     "includePlatforms": [
         "Editor"
     ],

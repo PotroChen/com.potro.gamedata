@@ -26,9 +26,14 @@ namespace GameFramework.GameData
         SerializedObject m_SerializedObject;
         SerializedProperty m_DataDescFile;
         SerializedProperty m_TableTemplateDirectory;
-        SerializedProperty m_TableDirectory;
         SerializedProperty m_GeneratedCodeDirectory;
         SerializedProperty m_DefaultNameSpace;
+        SerializedProperty m_RuntimeSettingPath;
+
+        GameDataSettings m_RuntimeSettings;
+        SerializedObject m_RuntimeSettingsSO;
+        SerializedProperty m_RelativeTableDirectory;
+
         public GameDataSettingsProvider(string path, SettingsScope scopes, IEnumerable<string> keywords = null)
                 : base(path, scopes, keywords) { }
 
@@ -38,9 +43,11 @@ namespace GameFramework.GameData
             m_SerializedObject = GameDataEditorSettings.instance.GetSerializedObject();
             m_DataDescFile = m_SerializedObject.FindProperty("m_DataDescFile");
             m_TableTemplateDirectory = m_SerializedObject.FindProperty("m_TableTemplateDirectory");
-            m_TableDirectory = m_SerializedObject.FindProperty("m_TableDirectory");
             m_GeneratedCodeDirectory = m_SerializedObject.FindProperty("m_GeneratedCodeDirectory");
             m_DefaultNameSpace = m_SerializedObject.FindProperty("m_DefaultNameSpace");
+            m_RuntimeSettingPath = m_SerializedObject.FindProperty("m_RuntimeSettingPath");
+
+            TryGetRuntimeSettings(m_RuntimeSettingPath.stringValue);
         }
 
         /* ScriptableSingleton故意设置成DontSaveAndHide
@@ -56,20 +63,54 @@ namespace GameFramework.GameData
                 EditorGUI.BeginChangeCheck();
                 EditorGUILayout.Space();
 
+                EditorGUILayout.LabelField("Editor Settings", EditorStyles.boldLabel);
                 m_DataDescFile.stringValue = RelativeFilePathFieldLayout("数据描述文件(XML)", m_DataDescFile.stringValue,"xml");
                 m_TableTemplateDirectory.stringValue = RelativeFolderPathFieldLayout("表格模板文件夹", m_TableTemplateDirectory.stringValue);
-                m_TableDirectory.stringValue = RelativeFolderPathFieldLayout("表格文件夹(csv)", m_TableDirectory.stringValue);
                 m_GeneratedCodeDirectory.stringValue = RelativeFolderPathFieldLayout("代码生成文件夹", m_GeneratedCodeDirectory.stringValue);
                 m_DefaultNameSpace.stringValue = EditorGUILayout.TextField("生成代码默认命名空间", m_DefaultNameSpace.stringValue);
+                var newSettingsPath = RelativeFilePathFieldLayout("Runtime Settings文件", m_RuntimeSettingPath.stringValue, "asset");
+                if (m_RuntimeSettingPath.stringValue != newSettingsPath)
+                {
+                    m_RuntimeSettingPath.stringValue = newSettingsPath;
+                    //加载Setitngs
+                    TryGetRuntimeSettings(m_RuntimeSettingPath.stringValue);
+                }
                 if (EditorGUI.EndChangeCheck())
                 {
                     m_SerializedObject.ApplyModifiedProperties();
                     GameDataEditorSettings.instance.Save();
                 }
+
+                if (m_RuntimeSettings == null)
+                {
+                    EditorGUILayout.HelpBox("Runtime Settings文件无法找到,请在该路径创建或者换路径", MessageType.Error);
+                }
+                else 
+                {
+                    EditorGUILayout.LabelField("Runtime Settings", EditorStyles.boldLabel);
+                    EditorGUI.BeginChangeCheck();
+
+                    m_RelativeTableDirectory.stringValue = RelativeFolderPathFieldLayout("表格文件夹(csv)", m_RelativeTableDirectory.stringValue);
+
+                    if (EditorGUI.EndChangeCheck())
+                    {
+                        m_RuntimeSettingsSO.ApplyModifiedProperties();
+                    }
+                }
             }
             finally
             {
                 EditorGUI.indentLevel--;
+            }
+        }
+
+        void TryGetRuntimeSettings(string relativePath)
+        {
+            m_RuntimeSettings = AssetDatabase.LoadAssetAtPath<GameDataSettings>(Path.Combine("Assets", relativePath));
+            if (m_RuntimeSettings != null)
+            {
+                m_RuntimeSettingsSO = new SerializedObject(m_RuntimeSettings);
+                m_RelativeTableDirectory = m_RuntimeSettingsSO.FindProperty("m_RelativeTableDirectory");
             }
         }
 

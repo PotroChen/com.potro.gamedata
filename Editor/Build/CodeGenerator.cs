@@ -8,6 +8,7 @@ using System;
 using UnityEditor;
 using UnityEditorInternal;
 using System.Linq;
+using UnityEngine;
 
 namespace GameFramework.GameData
 {
@@ -72,17 +73,25 @@ namespace GameFramework.GameData
             if (usingNamespaces == null)
                 usingNamespaces = new HashSet<string>();
 
+            if (!usingNamespaces.Contains("GameFramework.GameData"))
+                usingNamespaces.Add("GameFramework.GameData");
+
             if (!usingNamespaces.Contains("System.Collections.Generic"))
                 usingNamespaces.Add("System.Collections.Generic");
 
             if(!usingNamespaces.Contains(dataDesc.GetNamespace()))
                 usingNamespaces.Add(dataDesc.GetNamespace());
+            //添加泛型基类
+            tableClass.BaseTypes.Add(new CodeTypeReference("TableBase", new CodeTypeReference[] { keyType, new CodeTypeReference(dataDesc.Name) }));
+
+            /* 这部分可以放到基类里面
             //添加key2Data Dictionary
             CodeMemberField dataDic = new CodeMemberField();
             dataDic.Name = "m_DataDic";
             dataDic.Attributes = MemberAttributes.FamilyAndAssembly;//访问等级为Internals
             dataDic.Type = new CodeTypeReference("SortedDictionary", new CodeTypeReference[] { keyType, new CodeTypeReference(dataDesc.Name) });
             tableClass.Members.Add(dataDic);
+
             //添加GetData方法
             CodeMemberMethod getDataMethod = new CodeMemberMethod();
             getDataMethod.Name = $"Get{dataDesc.Name}";
@@ -95,6 +104,7 @@ namespace GameFramework.GameData
                 $"{intendedString}m_DataDic.TryGetValue({tableDescription.Key},out rtn);\n" +
                 $"{intendedString}return rtn;"));
             tableClass.Members.Add(getDataMethod);
+
             //添加GetAllData方法
             CodeMemberMethod getAllDataMethod = new CodeMemberMethod();
             getAllDataMethod.Name = $"GetAll{dataDesc.Name}s";
@@ -103,6 +113,21 @@ namespace GameFramework.GameData
             getAllDataMethod.Statements.Add(new CodeSnippetStatement(
                 $"{intendedString}return m_DataDic;"));
             tableClass.Members.Add(getAllDataMethod);
+            */
+
+            string intendedString = "            ";
+            //添加基类抽象方法LoadRecords
+            CodeMemberMethod loadRecords = new CodeMemberMethod();
+            loadRecords.Name = "LoadRecords";
+            loadRecords.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference("IEnumerable", new CodeTypeReference[] { new CodeTypeReference(dataDesc.Name) }),"records"));
+            loadRecords.Attributes = MemberAttributes.Override | MemberAttributes.Family;
+            loadRecords.Statements.Add(new CodeSnippetStatement(
+                $"{intendedString}foreach (var record in records)\n" +
+                $"{intendedString}{{\n" +
+                $"{intendedString}    m_DataDic[record.{tableDescription.Key}] = record;\n" +
+                $"{intendedString}}}"));
+            tableClass.Members.Add(loadRecords);
+
             return tableClass;
         }
 
@@ -171,7 +196,12 @@ namespace GameFramework.GameData
                     property.Name = variable.Name;
                     property.Attributes = MemberAttributes.Public | MemberAttributes.Final;
                     property.Type = fieldType;
+                    //Get
                     property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName)));
+                    //Set
+                    property.SetStatements.Add(
+                    new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName),new CodePropertySetValueReferenceExpression()));
+
                     property.Comments.Add(Comment(variable.Comment));
                     dataClass.Members.Add(property);
                 }
