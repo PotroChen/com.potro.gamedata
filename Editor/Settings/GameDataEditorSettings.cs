@@ -39,8 +39,6 @@ namespace GameFramework.GameData
         [SerializeField]
         private string m_TableTemplateDirectory = "";
         [SerializeField]
-        private string m_TableDirectory = "";
-        [SerializeField]
         private string m_GeneratedCodeDirectory = "";
         [SerializeField]
         private string m_DefaultNameSpace = "";

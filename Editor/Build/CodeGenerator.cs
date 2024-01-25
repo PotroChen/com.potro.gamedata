@@ -9,11 +9,13 @@ using UnityEditor;
 using UnityEditorInternal;
 using System.Linq;
 using UnityEngine;
+using System.Text.RegularExpressions;
 
 namespace GameFramework.GameData
 {
     internal class CodeGenerator
     {
+        const string GameDataRuntimeClassName = "GameDataRuntime";
         private Dictionary<string,CodeTypeReference> typeMapping = new Dictionary<string,CodeTypeReference>();
         private Dictionary<string,DataDescription> nameToDataDesc = new Dictionary<string,DataDescription>();
 
@@ -38,6 +40,101 @@ namespace GameFramework.GameData
                 else
                     throw new Exception($"Exist different data with same name:{dataDesc.Name}");
             }
+        }
+
+        internal void GenerateGameDataRuntimeCodeFile(DescriptionFile descriptionFile, string rootDirectory)
+        {
+            string filePath = Path.Combine(rootDirectory,$"{GameDataRuntimeClassName}.cs");
+            
+            CodeNamespace ns = new CodeNamespace(GameDataEditorSettings.DefaultNameSpace);
+            HashSet<string> usingNamespaces = null;
+            CodeTypeDeclaration descFile = DescriptionFileToCodeTypeDeclaration(descriptionFile, ref usingNamespaces);
+            ns.Types.Add(descFile);
+
+            CodeCompileUnit compileUnit = new CodeCompileUnit();
+            //设置所属Namespace
+            compileUnit.Namespaces.Add(ns);
+            //添加Using Namespace
+            CodeDomUtils.AddUsingNameSapce(compileUnit, usingNamespaces);
+            if (!Directory.Exists(rootDirectory))
+                Directory.CreateDirectory(rootDirectory);
+
+            GenerateCSharpCode(compileUnit, filePath);
+        }
+
+        internal CodeTypeDeclaration DescriptionFileToCodeTypeDeclaration(DescriptionFile descriptionFile, ref HashSet<string> usingNamespaces)
+        {
+            string tabString = "    ";
+            CodeTypeDeclaration descFileClass = new CodeTypeDeclaration(GameDataRuntimeClassName);
+            descFileClass.BaseTypes.Add(new CodeTypeReference("GameDataRuntimeBase"));
+            //记录需要添加的Using Namespace
+            if (usingNamespaces == null)
+                usingNamespaces = new HashSet<string>();
+
+            if (!usingNamespaces.Contains("GameFramework.GameData"))
+                usingNamespaces.Add("GameFramework.GameData");
+
+            CodeMemberField instanceField = new CodeMemberField();
+            instanceField.Type = new CodeTypeReference(GameDataRuntimeClassName);
+            instanceField.Name = "m_Instance";
+            instanceField.Attributes = MemberAttributes.Private | MemberAttributes.Static;
+            descFileClass.Members.Add(instanceField);
+            CodeMemberProperty instanceProperty = new CodeMemberProperty();
+            instanceProperty.Type = new CodeTypeReference(GameDataRuntimeClassName);
+            instanceProperty.Name = "Instance";
+            instanceProperty.Attributes = MemberAttributes.Public | MemberAttributes.Static;
+            instanceProperty.GetStatements.Add(new CodeSnippetExpression(
+                $"if(m_Instance == null)\n" +
+                $"{tabString}{tabString}{tabString}{tabString}    m_Instance = new GameDataRuntime();\n" +
+                $"{tabString}{tabString}{tabString}{tabString}return m_Instance"));
+            descFileClass.Members.Add(instanceProperty);
+
+            foreach (var tableDesc in descriptionFile.TableDescList)
+            {
+                string fieldName = $"m_{tableDesc.Name}";
+                //添加Table字段
+                CodeMemberField tableField = new CodeMemberField();
+                tableField.Type = new CodeTypeReference(tableDesc.Name);
+                tableField.Name = fieldName;
+                tableField.Attributes = MemberAttributes.Family | MemberAttributes.Final;
+                tableField.InitExpression = new CodeObjectCreateExpression(new CodeTypeReference(tableDesc.Name));
+                descFileClass.Members.Add(tableField);
+                //添加Table属性
+                CodeMemberProperty tableProperty = new CodeMemberProperty();
+                tableProperty.Type = new CodeTypeReference(tableDesc.Name);
+                tableProperty.Name = tableDesc.Name;
+                tableProperty.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+                tableProperty.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName)));
+                descFileClass.Members.Add(tableProperty);
+            }
+
+            //添加初始化方法
+            CodeMemberMethod initMethod = new CodeMemberMethod();
+            initMethod.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+            initMethod.Name = "Init";
+            initMethod.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference(typeof(bool)), "loadAtBegin"));
+            foreach (var tableDesc in descriptionFile.TableDescList)
+            {
+                string fieldName = $"m_{tableDesc.Name}";
+                initMethod.Statements.Add(new CodeSnippetStatement(
+                    $"{tabString}{tabString}{tabString}{fieldName}.Init(\"{tableDesc.FilePath}\");\n" +
+                    $"{tabString}{tabString}{tabString}if(loadAtBegin)\n" +
+                    $"{tabString}{tabString}{tabString}    LoadTable({fieldName});"));
+            }
+            descFileClass.Members.Add(initMethod);
+
+            //添加Unload方法
+            CodeMemberMethod unloadMethod = new CodeMemberMethod();
+            unloadMethod.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+            unloadMethod.Name = "Unload";
+            foreach (var tableDesc in descriptionFile.TableDescList)
+            {
+                string fieldName = $"m_{tableDesc.Name}";
+                unloadMethod.Statements.Add(new CodeSnippetStatement(
+                    $"{tabString}{tabString}{tabString}UnloadTable({fieldName});"));
+            }
+            descFileClass.Members.Add(unloadMethod);
+            return descFileClass;
         }
 
         #region GenerateTableCodeFile
@@ -214,19 +311,25 @@ namespace GameFramework.GameData
 
         public void GenerateCSharpCode(CodeCompileUnit compileunit,string filePath)
         {
+            Encoding encoding = Encoding.UTF8;
             CSharpCodeProvider provider = new CSharpCodeProvider();
-            using (StreamWriter sw = new StreamWriter(filePath, false, Encoding.UTF8))
+            using (StreamWriter sw = new StreamWriter(filePath, false, encoding))
             {
                 //会有auto-generated的注释，决定先留下(后续如果想要去掉,去掉TextWriter的前几行)
                 //用4个空格作为Tab
                 IndentedTextWriter tw = new IndentedTextWriter(sw, "    ");
-                
                 CodeGeneratorOptions options = new CodeGeneratorOptions();
                 options.BracingStyle = "C";//左花括号换行
+
                 provider.GenerateCodeFromCompileUnit(compileunit, tw,
                     options);
+
                 tw.Close();
             }
+
+            var content = File.ReadAllText(filePath, encoding);
+            content = SetLineEndings(content, EditorSettings.lineEndingsForNewScripts);
+            File.WriteAllText(filePath, content, encoding);
         }
 
         #region Comdom Utils
@@ -251,6 +354,38 @@ namespace GameFramework.GameData
             {
                 throw new Exception($"不支持variable type,{typeName}");
             }
+        }
+
+        //从源码拷贝出来的
+        internal static string SetLineEndings(string content, LineEndingsMode lineEndingsMode)
+        {
+            const string windowsLineEndings = "\r\n";
+            const string unixLineEndings = "\n";
+
+            string preferredLineEndings;
+
+            switch (lineEndingsMode)
+            {
+                case LineEndingsMode.OSNative:
+                    if (Application.platform == RuntimePlatform.WindowsEditor)
+                        preferredLineEndings = windowsLineEndings;
+                    else
+                        preferredLineEndings = unixLineEndings;
+                    break;
+                case LineEndingsMode.Unix:
+                    preferredLineEndings = unixLineEndings;
+                    break;
+                case LineEndingsMode.Windows:
+                    preferredLineEndings = windowsLineEndings;
+                    break;
+                default:
+                    preferredLineEndings = unixLineEndings;
+                    break;
+            }
+
+            content = Regex.Replace(content, @"\r\n?|\n", preferredLineEndings);
+
+            return content;
         }
 
 

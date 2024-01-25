@@ -27,6 +27,9 @@ namespace GameFramework.GameData
             {
                 codeGenerator.GenerateTableCodeFile(table, rootCodeDirectory);
             }
+
+            codeGenerator.GenerateGameDataRuntimeCodeFile(descFile, rootCodeDirectory);
+
             AssetDatabase.Refresh();
         }
 

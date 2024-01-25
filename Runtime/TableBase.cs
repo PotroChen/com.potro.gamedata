@@ -7,13 +7,22 @@ using System.Globalization;
 
 namespace GameFramework.GameData
 {
-    public abstract class TableBase<TKey,TValue>
+    public interface ITable
+    {
+        void Init(string relativeFilePath);
+
+        bool Load();
+
+        void Unload();
+    }
+
+    public abstract class TableBase<TKey,TValue>: ITable
     {
         public string FullPath { get { return Path.Combine(GameDataSettings.TableDirectory, RelativeFilePath); } }
         public string RelativeFilePath { get; private set; }
         public bool IsLoaded { get; private set; }
 
-        protected SortedDictionary<TKey, TValue> m_DataDic;
+        protected SortedDictionary<TKey, TValue> m_DataDic = new SortedDictionary<TKey, TValue>();
 
         public void Init(string relativeFilePath)
         {
@@ -61,6 +70,9 @@ namespace GameFramework.GameData
 
         protected abstract void LoadRecords(IEnumerable<TValue> records);
 
-
+        public void Unload()
+        {
+            m_DataDic.Clear();
+        }
     }
 }
