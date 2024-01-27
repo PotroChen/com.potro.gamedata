@@ -12,7 +12,7 @@ namespace GameFramework.GameData
      */
     public class GameDataSettings : ScriptableObject
     {
-        private static GameDataSettings m_Instance;
+        protected static GameDataSettings m_Instance;
 
         /*
          * 关于CSV分割符和编码格式的选择
@@ -40,6 +40,11 @@ namespace GameFramework.GameData
         protected virtual void OnEnable()
         {
             m_Instance = this;
+        }
+
+        protected virtual void OnDisable()
+        { 
+            m_Instance = null; 
         }
 
         protected virtual string GetTableDirectory()
