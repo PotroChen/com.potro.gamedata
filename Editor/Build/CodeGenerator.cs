@@ -10,6 +10,7 @@ using UnityEditorInternal;
 using System.Linq;
 using UnityEngine;
 using System.Text.RegularExpressions;
+using Mono.Cecil;
 
 namespace GameFramework.GameData
 {
@@ -29,6 +30,14 @@ namespace GameFramework.GameData
 
             CodeTypeReference uIntType = new CodeTypeReference(typeof(uint));
             typeMapping["uint32"] = uIntType;
+            typeMapping["uint"] = uIntType;
+
+            CodeTypeReference singleType = new CodeTypeReference(typeof(Single));
+            typeMapping["single"] = singleType;
+            typeMapping["float"] = singleType;
+
+            CodeTypeReference doubleType = new CodeTypeReference(typeof(Double));
+            typeMapping["double"] = doubleType;
 
             var descFile = GameDataSerialization.Deserialize(descFilePath);
             foreach (var dataDesc in descFile.DataDescList)
@@ -237,7 +246,11 @@ namespace GameFramework.GameData
             {
                 if (variable.Name == tableDescription.Key)
                 {
-                    return GetCodeType(variable.Type);
+                    if (!TryGetCodeType(variable.Type, out var codeReference))
+                    {
+                        throw new Exception($"Table:{tableDescription.Name} Variable:{variable.Name},不支持variable type,{variable.Type}");
+                    }
+                    return codeReference;
                 }
             }
             throw new Exception($"Table {tableDescription.Name} can not find key {tableDescription.Key}");
@@ -283,7 +296,11 @@ namespace GameFramework.GameData
                 //Data字段声明
                 foreach (var variable in dataDescription.Variables)
                 {
-                    var fieldType = GetCodeType(variable.Type);
+                    if (!TryGetCodeType(variable.Type, out var fieldType))
+                    {
+                        throw new Exception($"Data:{dataDescription.Name} Variable:{variable.Name},不支持variable type {variable.Type}");
+                    }
+
                     string fieldName = $"m_{variable.Name}";
                     CodeMemberField field = new CodeMemberField(fieldType, fieldName);
                     field.Attributes = MemberAttributes.FamilyAndAssembly;
@@ -292,14 +309,33 @@ namespace GameFramework.GameData
                     CodeMemberProperty property = new CodeMemberProperty();
                     property.Name = variable.Name;
                     property.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+                    // 检查是否为 List<T> 类型，如果是则添加 CsvHelper.Configuration.Attributes.TypeConverter 特性
+                    if (fieldType.BaseType != null && fieldType.BaseType.StartsWith("System.Collections.Generic.List"))
+                    {
+                        if (fieldType.TypeArguments.Count == 1)
+                        {
+                            var elementType = fieldType.TypeArguments[0];
+                            var typeConverterAttr = new CodeAttributeDeclaration(
+                                "CsvHelper.Configuration.Attributes.TypeConverter",
+                                new CodeAttributeArgument(
+                                    new CodeTypeOfExpression(
+                                        new CodeTypeReference($"GameFramework.GameData.GenericListTypeConverter<{elementType.BaseType}>")
+                                    )
+                                )
+                            );
+                            property.CustomAttributes.Add(typeConverterAttr);
+                        }
+                    }
                     property.Type = fieldType;
                     //Get
                     property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName)));
                     //Set
                     property.SetStatements.Add(
                     new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName),new CodePropertySetValueReferenceExpression()));
-
                     property.Comments.Add(Comment(variable.Comment));
+
+
+
                     dataClass.Members.Add(property);
                 }
             }
@@ -344,16 +380,27 @@ namespace GameFramework.GameData
             return commentStatement;
         }
 
-        private CodeTypeReference GetCodeType(string typeName)
+        private bool TryGetCodeType(string typeName, out CodeTypeReference type)
         {
-            if (typeMapping.TryGetValue(typeName, out var type))
+            if (typeMapping.TryGetValue(typeName, out type))
             {
-                return type;
+                return true;
             }
-            else
+
+            // 处理 list(xxx)，不区分大小写
+            var match = Regex.Match(typeName, @"^list\(\s*(.+?)\s*\)$", RegexOptions.IgnoreCase);
+            if (match.Success)
             {
-                throw new Exception($"不支持variable type,{typeName}");
+                string innerTypeName = match.Groups[1].Value;
+                if (TryGetCodeType(innerTypeName, out var innerType))
+                {
+                    type = new CodeTypeReference("System.Collections.Generic.List", innerType);
+                    return true;
+                }
+                return false;
             }
+
+            return false;
         }
 
         //从源码拷贝出来的
