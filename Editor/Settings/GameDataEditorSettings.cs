@@ -1,10 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using UnityEditor;
-using UnityEngine.UIElements;
-using System;
-using System.Reflection;
+using UnityEngine;
 
 namespace GameFramework.GameData
 {
@@ -12,20 +7,20 @@ namespace GameFramework.GameData
     public class GameDataEditorSettings : ScriptableSingleton<GameDataEditorSettings>
     {
         /// <summary>
-        /// Êı¾İ±íÊöÎÄ¼ş
+        /// æ•°æ®è¡¨è¿°æ–‡ä»¶
         /// </summary>
         public static string DataDescFile { get { return instance.m_DataDescFile; } }
         /// <summary>
-        /// ±í¸ñÄ£°åÎÄ¼ş¼Ğ
+        /// è¡¨æ ¼æ¨¡æ¿æ–‡ä»¶å¤¹
         /// </summary>
         public static string TableTemplateDirectory { get { return instance.m_TableTemplateDirectory; } }
         /// <summary>
-        /// ´úÂëÉú³ÉÎÄ¼ş¼Ğ
+        /// ä»£ç ç”Ÿæˆæ–‡ä»¶å¤¹
         /// </summary>
         public static string GeneratedCodeDirectory { get { return instance.m_GeneratedCodeDirectory; } }
 
         /// <summary>
-        /// Éú³É´úÂëÄ¬ÈÏÃüÃû¿Õ¼ä
+        /// ç”Ÿæˆä»£ç é»˜è®¤å‘½åç©ºé—´
         /// </summary>
         public static string DefaultNameSpace { get { return instance.m_DefaultNameSpace; } }
 

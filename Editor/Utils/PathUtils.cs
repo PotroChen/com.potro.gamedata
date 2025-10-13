@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-internal static class PathUitls
+internal static class PathUtils
 {
     public static string MakeRelativePath(string fromPath, string toPath)
     {

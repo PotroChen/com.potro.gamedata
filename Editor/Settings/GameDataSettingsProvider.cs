@@ -1,15 +1,7 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Xml;
-using System.Xml.Serialization;
-using GameFramework.GameData;
-using JetBrains.Annotations;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.UIElements;
 
 namespace GameFramework.GameData
@@ -17,7 +9,7 @@ namespace GameFramework.GameData
     class GameDataSettingsProvider : SettingsProvider
     {
         [SettingsProvider]
-        public static SettingsProvider CreateTimelineProjectSettingProvider()
+        public static SettingsProvider CreateGameDataProjectSettingProvider()
         {
             var provider = new GameDataSettingsProvider("Project/GameData Editor Settings", SettingsScope.Project);
             return provider;
@@ -40,6 +32,7 @@ namespace GameFramework.GameData
         public override void OnActivate(string searchContext, VisualElement rootElement)
         {
             GameDataEditorSettings.instance.Save();
+
             m_SerializedObject = GameDataEditorSettings.instance.GetSerializedObject();
             m_DataDescFile = m_SerializedObject.FindProperty("m_DataDescFile");
             m_TableTemplateDirectory = m_SerializedObject.FindProperty("m_TableTemplateDirectory");
@@ -50,8 +43,8 @@ namespace GameFramework.GameData
             TryGetRuntimeSettings(m_RuntimeSettingPath.stringValue);
         }
 
-        /* ScriptableSingleton¹ÊÒâÉèÖÃ³ÉDontSaveAndHide
-         * ¹ÊÒâ²»Ï£ÍûÎÒÃÇÓÃPropertyField.¶øÊÇÍ¨¹ıµ÷ÓÃSave()±£´æ(²»ÖªµÀÎªÊ²Ã´)
+        /* ScriptableSingletonæ•…æ„è®¾ç½®æˆDontSaveAndHide
+         * æ•…æ„ä¸å¸Œæœ›æˆ‘ä»¬ç”¨PropertyField.è€Œæ˜¯é€šè¿‡è°ƒç”¨Save()ä¿å­˜(ä¸çŸ¥é“ä¸ºä»€ä¹ˆ)
          */
         public override void OnGUI(string searchContext)
         {
@@ -64,15 +57,15 @@ namespace GameFramework.GameData
                 EditorGUILayout.Space();
 
                 EditorGUILayout.LabelField("Editor Settings", EditorStyles.boldLabel);
-                m_DataDescFile.stringValue = RelativeFilePathFieldLayout("Êı¾İÃèÊöÎÄ¼ş(XML)", m_DataDescFile.stringValue,"xml");
-                m_TableTemplateDirectory.stringValue = RelativeFolderPathFieldLayout("±í¸ñÄ£°åÎÄ¼ş¼Ğ", m_TableTemplateDirectory.stringValue);
-                m_GeneratedCodeDirectory.stringValue = RelativeFolderPathFieldLayout("´úÂëÉú³ÉÎÄ¼ş¼Ğ", m_GeneratedCodeDirectory.stringValue);
-                m_DefaultNameSpace.stringValue = EditorGUILayout.TextField("Éú³É´úÂëÄ¬ÈÏÃüÃû¿Õ¼ä", m_DefaultNameSpace.stringValue);
-                var newSettingsPath = RelativeFilePathFieldLayout("Runtime SettingsÎÄ¼ş", m_RuntimeSettingPath.stringValue, "asset");
+                m_DataDescFile.stringValue = RelativeFilePathFieldLayout("æ•°æ®æè¿°æ–‡ä»¶(XML)", m_DataDescFile.stringValue,"xml");
+                m_TableTemplateDirectory.stringValue = RelativeFolderPathFieldLayout("è¡¨æ ¼æ¨¡æ¿æ–‡ä»¶å¤¹", m_TableTemplateDirectory.stringValue);
+                m_GeneratedCodeDirectory.stringValue = RelativeFolderPathFieldLayout("ä»£ç ç”Ÿæˆæ–‡ä»¶å¤¹", m_GeneratedCodeDirectory.stringValue);
+                m_DefaultNameSpace.stringValue = EditorGUILayout.TextField("ç”Ÿæˆä»£ç é»˜è®¤å‘½åç©ºé—´", m_DefaultNameSpace.stringValue);
+                var newSettingsPath = RelativeFilePathFieldLayout("Runtime Settingsæ–‡ä»¶", m_RuntimeSettingPath.stringValue, "asset");
                 if (m_RuntimeSettingPath.stringValue != newSettingsPath)
                 {
                     m_RuntimeSettingPath.stringValue = newSettingsPath;
-                    //¼ÓÔØSetitngs
+                    //åŠ è½½Setitngs
                     TryGetRuntimeSettings(m_RuntimeSettingPath.stringValue);
                 }
                 if (EditorGUI.EndChangeCheck())
@@ -83,14 +76,14 @@ namespace GameFramework.GameData
 
                 if (m_RuntimeSettings == null)
                 {
-                    EditorGUILayout.HelpBox("Runtime SettingsÎÄ¼şÎŞ·¨ÕÒµ½,ÇëÔÚ¸ÃÂ·¾¶´´½¨»òÕß»»Â·¾¶", MessageType.Error);
+                    EditorGUILayout.HelpBox("Runtime Settingsæ–‡ä»¶æ— æ³•æ‰¾åˆ°,è¯·åœ¨è¯¥è·¯å¾„åˆ›å»ºæˆ–è€…æ¢è·¯å¾„", MessageType.Error);
                 }
                 else 
                 {
                     EditorGUILayout.LabelField("Runtime Settings", EditorStyles.boldLabel);
                     EditorGUI.BeginChangeCheck();
 
-                    m_RelativeTableDirectory.stringValue = RelativeFolderPathFieldLayout("±í¸ñÎÄ¼ş¼Ğ(csv)", m_RelativeTableDirectory.stringValue);
+                    m_RelativeTableDirectory.stringValue = RelativeFolderPathFieldLayout("è¡¨æ ¼æ–‡ä»¶å¤¹(csv)", m_RelativeTableDirectory.stringValue);
 
                     if (EditorGUI.EndChangeCheck())
                     {
@@ -123,7 +116,7 @@ namespace GameFramework.GameData
                 string newPath = EditorUtility.OpenFolderPanel(label, value, "");
                 if (newPath.Length != 0)
                 {
-                    path = PathUitls.MakeRelativePath(Application.dataPath, newPath);
+                    path = PathUtils.MakeRelativePath(Application.dataPath, newPath);
                 }
 
             }
@@ -140,7 +133,7 @@ namespace GameFramework.GameData
                 string newPath = EditorUtility.OpenFilePanel(label, value, extension);
                 if (newPath.Length != 0)
                 {
-                    path = PathUitls.MakeRelativePath(Application.dataPath, newPath);
+                    path = PathUtils.MakeRelativePath(Application.dataPath, newPath);
                 }
 
             }
