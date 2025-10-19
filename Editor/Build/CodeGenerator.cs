@@ -58,9 +58,9 @@ namespace GameFramework.GameData
             ns.Types.Add(descFile);
 
             CodeCompileUnit compileUnit = new CodeCompileUnit();
-            //ÉèÖÃËùÊôNamespace
+            //è®¾ç½®æ‰€å±Namespace
             compileUnit.Namespaces.Add(ns);
-            //Ìí¼ÓUsing Namespace
+            //æ·»åŠ Using Namespace
             CodeDomUtils.AddUsingNameSapce(compileUnit, usingNamespaces);
             if (!Directory.Exists(rootDirectory))
                 Directory.CreateDirectory(rootDirectory);
@@ -73,7 +73,7 @@ namespace GameFramework.GameData
             string tabString = "    ";
             CodeTypeDeclaration descFileClass = new CodeTypeDeclaration(GameDataRuntimeClassName);
             descFileClass.BaseTypes.Add(new CodeTypeReference("GameDataRuntimeBase"));
-            //¼ÇÂ¼ĞèÒªÌí¼ÓµÄUsing Namespace
+            //è®°å½•éœ€è¦æ·»åŠ çš„Using Namespace
             if (usingNamespaces == null)
                 usingNamespaces = new HashSet<string>();
 
@@ -98,14 +98,14 @@ namespace GameFramework.GameData
             foreach (var tableDesc in descriptionFile.TableDescList)
             {
                 string fieldName = $"m_{tableDesc.Name}";
-                //Ìí¼ÓTable×Ö¶Î
+                //æ·»åŠ Tableå­—æ®µ
                 CodeMemberField tableField = new CodeMemberField();
                 tableField.Type = new CodeTypeReference(tableDesc.Name);
                 tableField.Name = fieldName;
                 tableField.Attributes = MemberAttributes.Family | MemberAttributes.Final;
                 tableField.InitExpression = new CodeObjectCreateExpression(new CodeTypeReference(tableDesc.Name));
                 descFileClass.Members.Add(tableField);
-                //Ìí¼ÓTableÊôĞÔ
+                //æ·»åŠ Tableå±æ€§
                 CodeMemberProperty tableProperty = new CodeMemberProperty();
                 tableProperty.Type = new CodeTypeReference(tableDesc.Name);
                 tableProperty.Name = tableDesc.Name;
@@ -114,7 +114,7 @@ namespace GameFramework.GameData
                 descFileClass.Members.Add(tableProperty);
             }
 
-            //Ìí¼Ó³õÊ¼»¯·½·¨
+            //æ·»åŠ åˆå§‹åŒ–æ–¹æ³•
             CodeMemberMethod initMethod = new CodeMemberMethod();
             initMethod.Attributes = MemberAttributes.Public | MemberAttributes.Final;
             initMethod.Name = "Init";
@@ -129,7 +129,7 @@ namespace GameFramework.GameData
             }
             descFileClass.Members.Add(initMethod);
 
-            //Ìí¼ÓUnload·½·¨
+            //æ·»åŠ Unloadæ–¹æ³•
             CodeMemberMethod unloadMethod = new CodeMemberMethod();
             unloadMethod.Attributes = MemberAttributes.Public | MemberAttributes.Final;
             unloadMethod.Name = "Unload";
@@ -156,9 +156,9 @@ namespace GameFramework.GameData
             ns.Types.Add(table);
 
             CodeCompileUnit compileUnit = new CodeCompileUnit();
-            //ÉèÖÃËùÊôNamespace
+            //è®¾ç½®æ‰€å±Namespace
             compileUnit.Namespaces.Add(ns);
-            //Ìí¼ÓUsing Namespace
+            //æ·»åŠ Using Namespace
             CodeDomUtils.AddUsingNameSapce(compileUnit, usingNamespaces);
             if (!Directory.Exists(directoryPath))
                 Directory.CreateDirectory(directoryPath);
@@ -166,13 +166,13 @@ namespace GameFramework.GameData
             GenerateCSharpCode(compileUnit, filePath);
         }
 
-        //TableÀà
+        //Tableç±»
         internal CodeTypeDeclaration TableDescToCodeTypeDeclaration(TableDescription tableDescription,ref HashSet<string> usingNamespaces)
         {
             CodeTypeDeclaration tableClass = new CodeTypeDeclaration(tableDescription.Name);
             var keyType = GetKeyType(tableDescription);
             var dataDesc = GetDataDesc(tableDescription);
-            //¼ÇÂ¼ĞèÒªÌí¼ÓµÄUsing Namespace
+            //è®°å½•éœ€è¦æ·»åŠ çš„Using Namespace
             if (usingNamespaces == null)
                 usingNamespaces = new HashSet<string>();
 
@@ -184,42 +184,11 @@ namespace GameFramework.GameData
 
             if(!usingNamespaces.Contains(dataDesc.GetNamespace()))
                 usingNamespaces.Add(dataDesc.GetNamespace());
-            //Ìí¼Ó·ºĞÍ»ùÀà
+            //æ·»åŠ æ³›å‹åŸºç±»
             tableClass.BaseTypes.Add(new CodeTypeReference("TableBase", new CodeTypeReference[] { keyType, new CodeTypeReference(dataDesc.Name) }));
 
-            /* Õâ²¿·Ö¿ÉÒÔ·Åµ½»ùÀàÀïÃæ
-            //Ìí¼Ókey2Data Dictionary
-            CodeMemberField dataDic = new CodeMemberField();
-            dataDic.Name = "m_DataDic";
-            dataDic.Attributes = MemberAttributes.FamilyAndAssembly;//·ÃÎÊµÈ¼¶ÎªInternals
-            dataDic.Type = new CodeTypeReference("SortedDictionary", new CodeTypeReference[] { keyType, new CodeTypeReference(dataDesc.Name) });
-            tableClass.Members.Add(dataDic);
-
-            //Ìí¼ÓGetData·½·¨
-            CodeMemberMethod getDataMethod = new CodeMemberMethod();
-            getDataMethod.Name = $"Get{dataDesc.Name}";
-            getDataMethod.Attributes = MemberAttributes.Public| MemberAttributes.Final;
-            getDataMethod.ReturnType = new CodeTypeReference(dataDesc.Name);
-            getDataMethod.Parameters.Add(new CodeParameterDeclarationExpression(keyType, tableDescription.Key));
             string intendedString = "            ";
-            getDataMethod.Statements.Add(new CodeSnippetStatement(
-                $"{intendedString}{dataDesc.Name} rtn;\n" +
-                $"{intendedString}m_DataDic.TryGetValue({tableDescription.Key},out rtn);\n" +
-                $"{intendedString}return rtn;"));
-            tableClass.Members.Add(getDataMethod);
-
-            //Ìí¼ÓGetAllData·½·¨
-            CodeMemberMethod getAllDataMethod = new CodeMemberMethod();
-            getAllDataMethod.Name = $"GetAll{dataDesc.Name}s";
-            getAllDataMethod.Attributes = MemberAttributes.Public | MemberAttributes.Final;
-            getAllDataMethod.ReturnType = dataDic.Type;
-            getAllDataMethod.Statements.Add(new CodeSnippetStatement(
-                $"{intendedString}return m_DataDic;"));
-            tableClass.Members.Add(getAllDataMethod);
-            */
-
-            string intendedString = "            ";
-            //Ìí¼Ó»ùÀà³éÏó·½·¨LoadRecords
+            //æ·»åŠ åŸºç±»æŠ½è±¡æ–¹æ³•LoadRecords
             CodeMemberMethod loadRecords = new CodeMemberMethod();
             loadRecords.Name = "LoadRecords";
             loadRecords.Parameters.Add(new CodeParameterDeclarationExpression(new CodeTypeReference("IEnumerable", new CodeTypeReference[] { new CodeTypeReference(dataDesc.Name) }),"records"));
@@ -245,7 +214,7 @@ namespace GameFramework.GameData
                 {
                     if (!TryGetCodeType(variable.Type, out var codeReference))
                     {
-                        throw new Exception($"Table:{tableDescription.Name} Variable:{variable.Name},²»Ö§³Övariable type,{variable.Type}");
+                        throw new Exception($"Table:{tableDescription.Name} Variable:{variable.Name},ä¸æ”¯æŒvariable type,{variable.Type}");
                     }
                     return codeReference;
                 }
@@ -284,18 +253,18 @@ namespace GameFramework.GameData
             GenerateCSharpCode(compileUnit, filePath);
         }
 
-        //DataÀàÉùÃ÷
+        //Dataç±»å£°æ˜
         internal CodeTypeDeclaration DataDescToCodeTypeDeclaration(DataDescription dataDescription)
         {
             CodeTypeDeclaration dataClass = new CodeTypeDeclaration(dataDescription.Name);
             if (dataDescription.Variables != null && dataDescription.Variables.Count > 0)
             {
-                //Data×Ö¶ÎÉùÃ÷
+                //Dataå­—æ®µå£°æ˜
                 foreach (var variable in dataDescription.Variables)
                 {
                     if (!TryGetCodeType(variable.Type, out var fieldType))
                     {
-                        throw new Exception($"Data:{dataDescription.Name} Variable:{variable.Name},²»Ö§³Övariable type {variable.Type}");
+                        throw new Exception($"Data:{dataDescription.Name} Variable:{variable.Name},ä¸æ”¯æŒvariable type {variable.Type}");
                     }
 
                     string fieldName = $"m_{variable.Name}";
@@ -306,7 +275,7 @@ namespace GameFramework.GameData
                     CodeMemberProperty property = new CodeMemberProperty();
                     property.Name = variable.Name;
                     property.Attributes = MemberAttributes.Public | MemberAttributes.Final;
-                    // ¼ì²éÊÇ·ñÎª List<T> ÀàĞÍ£¬Èç¹ûÊÇÔòÌí¼Ó CsvHelper.Configuration.Attributes.TypeConverter ÌØĞÔ
+                    // æ£€æŸ¥æ˜¯å¦ä¸º List<T> ç±»å‹ï¼Œå¦‚æœæ˜¯åˆ™æ·»åŠ  CsvHelper.Configuration.Attributes.TypeConverter ç‰¹æ€§
                     if (fieldType.BaseType != null && fieldType.BaseType.StartsWith("System.Collections.Generic.List"))
                     {
                         if (fieldType.TypeArguments.Count == 1)
@@ -331,8 +300,6 @@ namespace GameFramework.GameData
                     new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), fieldName),new CodePropertySetValueReferenceExpression()));
                     property.Comments.Add(Comment(variable.Comment));
 
-
-
                     dataClass.Members.Add(property);
                 }
             }
@@ -348,11 +315,11 @@ namespace GameFramework.GameData
             CSharpCodeProvider provider = new CSharpCodeProvider();
             using (StreamWriter sw = new StreamWriter(filePath, false, encoding))
             {
-                //»áÓĞauto-generatedµÄ×¢ÊÍ£¬¾ö¶¨ÏÈÁôÏÂ(ºóĞøÈç¹ûÏëÒªÈ¥µô,È¥µôTextWriterµÄÇ°¼¸ĞĞ)
-                //ÓÃ4¸ö¿Õ¸ñ×÷ÎªTab
+                //ä¼šæœ‰auto-generatedçš„æ³¨é‡Šï¼Œå†³å®šå…ˆç•™ä¸‹(åç»­å¦‚æœæƒ³è¦å»æ‰,å»æ‰TextWriterçš„å‰å‡ è¡Œ)
+                //ç”¨4ä¸ªç©ºæ ¼ä½œä¸ºTab
                 IndentedTextWriter tw = new IndentedTextWriter(sw, "    ");
                 CodeGeneratorOptions options = new CodeGeneratorOptions();
-                options.BracingStyle = "C";//×ó»¨À¨ºÅ»»ĞĞ
+                options.BracingStyle = "C";//å·¦èŠ±æ‹¬å·æ¢è¡Œ
 
                 provider.GenerateCodeFromCompileUnit(compileunit, tw,
                     options);
@@ -367,7 +334,7 @@ namespace GameFramework.GameData
 
         #region Comdom Utils
         /// <summary>
-        /// ×¢ÊÍ
+        /// æ³¨é‡Š
         /// </summary>
         /// <param name="content"></param>
         public static CodeCommentStatement Comment(string content)
@@ -384,7 +351,7 @@ namespace GameFramework.GameData
                 return true;
             }
 
-            // ´¦Àí list(xxx)£¬²»Çø·Ö´óĞ¡Ğ´
+            // å¤„ç† list(xxx)ï¼Œä¸åŒºåˆ†å¤§å°å†™
             var match = Regex.Match(typeName, @"^list\(\s*(.+?)\s*\)$", RegexOptions.IgnoreCase);
             if (match.Success)
             {
@@ -400,7 +367,7 @@ namespace GameFramework.GameData
             return false;
         }
 
-        //´ÓÔ´Âë¿½±´³öÀ´µÄ
+        //ä»æºç æ‹·è´å‡ºæ¥çš„
         internal static string SetLineEndings(string content, LineEndingsMode lineEndingsMode)
         {
             const string windowsLineEndings = "\r\n";
